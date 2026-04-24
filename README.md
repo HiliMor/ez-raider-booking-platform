@@ -61,7 +61,7 @@ The application has three distinct user roles and interfaces:
 
 > **Note:** The admin dashboard contains real customer and business data. Only a partial view is shown here to protect the privacy of the business and its customers.
 
-<img src="demo/management-dashboard.gif" width="100%" alt="Admin Dashboard" />
+<img src="demo/management-dashboard-preview.png" width="100%" alt="Admin Dashboard" />
 
 ---
 
