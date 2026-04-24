@@ -57,6 +57,12 @@ The application has three distinct user roles and interfaces:
 
 <img src="demo/bookings2.gif" width="100%" alt="Booking Flow 2" />
 
+### Admin Dashboard
+
+> **Note:** The admin dashboard contains real customer and business data. Only a partial view is shown here to protect the privacy of the business and its customers.
+
+<img src="demo/management-dashboard.gif" width="100%" alt="Admin Dashboard" />
+
 ---
 
 ## Tech Stack
