@@ -4,7 +4,7 @@
 
 > **Note:** This is a portfolio showcase of the project. The production codebase is private as it belongs to a real operating business.
 
-<img src="demo/segs-front-page.gif" width="100%" alt="SEGS Platform Demo" />
+<img src="demo/segs-website.gif" width="100%" alt="SEGS Platform Demo" />
 
 ---
 
@@ -49,7 +49,13 @@ The application has three distinct user roles and interfaces:
 
 ## Demo
 
-<img src="demo/segs-front-page.gif" width="100%" alt="SEGS Platform Demo" />
+<img src="demo/segs-website.gif" width="100%" alt="SEGS Platform Demo" />
+
+### Booking Flow
+
+<img src="demo/booking.gif" width="100%" alt="Booking Flow" />
+
+<img src="demo/bookings2.gif" width="100%" alt="Booking Flow 2" />
 
 ---
 
