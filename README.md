@@ -53,8 +53,6 @@ The application has three distinct user roles and interfaces:
 
 ### Booking Flow
 
-<img src="demo/booking.gif" width="100%" alt="Booking Flow" />
-
 <img src="demo/bookings2.gif" width="100%" alt="Booking Flow 2" />
 
 ### Admin Dashboard
