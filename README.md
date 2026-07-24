@@ -3,6 +3,8 @@
 **A full-stack booking and management web application for a guided EZ Raider tour business in ancient Caesarea, Israel.**
 
 > **Note:** This is a portfolio showcase of the project. The production codebase is private as it belongs to a real operating business.
+>
+> **Current showcase:** Updated from the production implementation in July 2026. No customer data, credentials, or private source code are included in this repository.
 
 <img src="demo/segs-website.gif" width="100%" alt="SEGS Platform Demo" />
 
@@ -12,7 +14,7 @@
 
 - [The Business Need](#the-business-need)
 - [Live Product Overview](#live-product-overview)
-- [Screenshots](#screenshots)
+- [Demo](#demo)
 - [Tech Stack](#tech-stack)
 - [Key Features](#key-features)
 - [Architecture](#architecture)
@@ -42,8 +44,8 @@ The application has three distinct user roles and interfaces:
 | Role | Interface | Access |
 |------|-----------|--------|
 | **Customer** | Public landing page + booking flow | Open |
-| **Guide** | Guide dashboard (`/guide`) | Google OAuth |
-| **Admin** | Full management dashboard | Google OAuth + Admin role |
+| **Guide** | Guide dashboard (`/guide`) | Google OAuth or email/password + Guide role |
+| **Admin** | Full management dashboard | Google OAuth or email/password + Admin role |
 
 ---
 
@@ -79,16 +81,19 @@ The application has three distinct user roles and interfaces:
 | **date-fns** | Date manipulation with Hebrew locale support |
 | **Embla Carousel** | Responsive image gallery |
 | **Sonner** | Toast notification system |
+| **SheetJS** | Operational spreadsheet exports |
 
 ### Backend & Database
 | Technology | Purpose |
 |------------|---------|
 | **Supabase** | PostgreSQL database, Auth, Edge Functions, Storage |
-| **Supabase Auth** | Google OAuth with session persistence |
+| **Supabase Auth** | Google OAuth and email/password with session persistence |
 | **Supabase Edge Functions** | TypeScript/Deno serverless functions |
 | **Supabase Realtime** | Live data sync via Postgres `LISTEN/NOTIFY` |
 | **Row-Level Security (RLS)** | Fine-grained data access control |
-| **Supabase Storage** | Gift card PDF generation and file uploads |
+| **Supabase Storage** | Guide avatar uploads and managed media |
+| **PayPlus integration** | Hosted payment pages, callbacks, and payment-status synchronization |
+| **Transactional email pipeline** | Confirmations, reminders, follow-ups, retries, and delivery logs |
 
 ### Tooling
 | Technology | Purpose |
@@ -109,12 +114,16 @@ The application has three distinct user roles and interfaces:
 3. Customer selects a slot — sees the assigned guide's photo, languages, and bio
 4. Enters participant count and personal details
 5. Can apply a gift card or discount code (validated via Supabase RPC)
-6. Booking is created via Edge Function with duplicate and capacity checks
+6. Adds invoice-recipient details when needed
+7. Booking is created via Edge Function with duplicate and capacity checks
+8. Paid bookings continue to a hosted PayPlus payment page; callbacks synchronize the final booking and payment state
+9. The customer receives bilingual transactional email updates
 
 **Gift Voucher Purchase:**
-- Select ticket quantities for adult/child/senior
-- Enter recipient info
-- System generates a unique voucher code with a PDF download
+- Select adult and child ticket quantities
+- Enter purchaser and recipient information
+- Complete payment on the hosted PayPlus page
+- Receive a unique voucher code and bilingual confirmation
 
 **Tour Requests:**
 - If no slots are available on a selected date, customers can submit a custom tour request
@@ -133,12 +142,15 @@ The application has three distinct user roles and interfaces:
 A full CRM and operations management panel with real-time updates:
 
 - **Tour Slots Manager** – Calendar (month/week/day views), color-coded slot categories, create/edit/delete slots, assign guides, manage blocked time ranges
-- **Bookings Manager** – Table with filter by status (pending / approved / confirmed / rejected / cancelled), manual booking creation, external booking linking
+- **Bookings Manager** – Table with status and payment filters, manual booking creation, and external booking linking
 - **Tour Requests Manager** – Review and action custom tour requests
 - **Guides Manager** – Add/edit guide profiles with avatar, languages, Hebrew & English bios
 - **Customers Manager** – View full customer list with booking history
-- **Gift Cards Manager** – Issue gift cards, track remaining balance, set expiry dates
-- **Discount Codes Manager** – Create percent or fixed-value codes for partners
+- **Promotions Manager** – Manage gift cards and percent/fixed-value discount codes in one workspace
+- **Payment Operations** – Track payment method and status, reopen hosted payment pages, reconcile callbacks, and capture invoice-recipient details
+- **Historical Bookings** – Review legacy records, link them to an existing tour, or create a matching tour slot
+- **Email Operations** – Inspect delivery logs, filter failures, and preview customer/admin email templates
+- **Operational Monitoring** – Surface stuck payments, amount mismatches, failed callbacks, booking errors, and delivery warnings
 - **Real-time Notifications** – Badge counts on tabs for unreviewed bookings and requests
 
 ---
@@ -146,10 +158,13 @@ A full CRM and operations management panel with real-time updates:
 ### Guide Dashboard
 
 A focused, lightweight view for tour guides:
-- See only their assigned upcoming slots
-- View confirmed and pending bookings for those slots
-- Toggle between "my tours" and all active tours
-- Auto-linked to their guide profile by Google OAuth email on first login
+- Switch between list and month/week/day calendar views
+- Filter tours by today, week, month, or historical periods
+- See assigned tours, participant totals, payment states, and booking details
+- Contact customers by phone or WhatsApp from the operational view
+- Export relevant schedule data to a spreadsheet
+- Auto-link the signed-in account to the matching guide profile
+- Let admins preview the guide experience for support and verification
 
 ---
 
@@ -163,8 +178,9 @@ A focused, lightweight view for tour guides:
 │  ├─ Hero               ├─ Slots Mgr       ├─ My Tours│
 │  ├─ Gallery            ├─ Bookings Mgr    └─ My Bookings
 │  ├─ Booking Flow       ├─ Guides Mgr                 │
-│  └─ Gift Vouchers      ├─ Gift Cards Mgr             │
-│                        └─ Customers Mgr              │
+│  └─ Gift Vouchers      ├─ Promotions                 │
+│                        ├─ Customers Mgr              │
+│                        └─ Monitor & Email             │
 │                                                     │
 │  State: React Query (server) + useState (UI)        │
 │  i18n:  Custom LanguageContext (HE/EN + RTL)        │
@@ -180,9 +196,14 @@ A focused, lightweight view for tour guides:
 │                                                     │
 │  ┌─────────────┐  ┌──────────────┐                 │
 │  │   Auth       │  │  Storage     │                 │
-│  │ Google OAuth │  │ PDFs/Images  │                 │
+│  │ OAuth/Password│ │ Avatars/Media│                 │
 │  └─────────────┘  └──────────────┘                 │
 └─────────────────────────────────────────────────────┘
+                         │
+       ┌─────────────────┴─────────────────┐
+       │ PayPlus payments + email delivery │
+       │ callbacks, queues, retries & logs │
+       └───────────────────────────────────┘
 ```
 
 ### Key Architectural Decisions
@@ -203,7 +224,16 @@ Supabase Realtime channels subscribed in the admin dashboard provide live badge 
 The main landing page uses `React.lazy()` + `Suspense` for each section, splitting the bundle and improving initial load time.
 
 **6. Guide auto-linking by email**
-When a guide logs in with Google OAuth, an Edge Function matches their email to a guide profile and auto-links the account — no manual admin step required.
+When a guide signs in with Google OAuth or email/password, an Edge Function matches the account email to a guide profile and auto-links it — no manual admin step required.
+
+**7. Payment callbacks as the source of truth**
+Hosted PayPlus pages keep card entry outside the application. Server-side callbacks and explicit status synchronization update payment and booking state, while operational logs flag failures and amount mismatches.
+
+**8. Resilient transactional email delivery**
+Booking confirmations and operational messages are processed through a queue with duplicate protection, retry limits, rate-limit cooldowns, expiration handling, and a dead-letter path. Scheduled jobs send reminders before a tour and feedback requests afterward.
+
+**9. Production observability inside the admin product**
+Payment events and email delivery results are exposed in a protected monitoring workspace, giving the business a direct way to investigate failed workflows without database access.
 
 ---
 
@@ -224,12 +254,18 @@ When a guide logs in with Google OAuth, an Edge Function matches their email to 
 | `blocked_times` | Date/time ranges blocked by admin (holidays, etc.) |
 | `category_rules` | Color-coded slot category definitions |
 | `user_roles` | Admin/guide role assignments |
+| `legacy_bookings` | Historical bookings imported from the previous workflow |
+| `payment_log` | Payment lifecycle events, callbacks, warnings, and failures |
+| `email_log` / `email_send_log` | Transactional and queued email delivery history |
+| `email_send_state` | Queue throttling and delivery-processing state |
+| `app_settings` | Operational settings used by protected workflows |
 
 **Key Database Features:**
 - Row-Level Security (RLS) policies on all tables
 - Trigger on `bookings` to auto-update `current_participants` on tour slots
 - Public RPC functions for gift card and discount code lookups (no auth required)
-- 20+ versioned SQL migrations tracked in `/supabase/migrations`
+- 130+ versioned SQL migrations tracked in `/supabase/migrations`
+- 11 serverless functions for auth, booking, payments, email delivery, and account management
 
 ---
 
@@ -237,11 +273,14 @@ When a guide logs in with Google OAuth, an Edge Function matches their email to 
 
 ### What I built:
 - A complete full-stack web application from scratch for a real, operating business
-- A multi-role system (customer / guide / admin) with Google OAuth and role-based routing
+- A multi-role system (customer / guide / admin) with OAuth, email/password, and role-based routing
 - A bilingual (Hebrew + English) UI with full RTL support, including proper date formatting, font families, and layout direction
 - A real-time admin dashboard with live notifications using Supabase subscriptions
 - A gift card system with PDF generation, code validation, and balance tracking
 - A discount code system for business partners
+- A hosted online-payment flow with callbacks, status reconciliation, and operational alerts
+- A transactional email system with bilingual templates, scheduled reminders, delivery logs, and retry handling
+- A production monitoring workspace for payments and customer communications
 - Database schema with RLS, triggers, and RPC functions for secure data access
 - Responsive, accessible design supporting screen readers, keyboard navigation, font scaling, and high-contrast mode
 
@@ -253,12 +292,14 @@ When a guide logs in with Google OAuth, an Edge Function matches their email to 
 - Structuring a React app with multiple user roles and protected routes
 - Building accessible UI components using Radix UI primitives (via shadcn/ui)
 - Writing Supabase Edge Functions in Deno/TypeScript for secure server-side logic
+- Designing idempotent payment and email workflows that can recover from retries, duplicates, and third-party failures
+- Building observability for non-technical operators instead of relying only on developer logs
 
 ---
 
 ## Project Status
 
-The application is **live in production** and actively used by the business. Development is ongoing — features are added based on operational feedback from the business owner and guides.
+The application is **live in production** and actively used by the business. Development is ongoing — features are added based on operational feedback from the business owner and guides. This showcase reflects the production feature set as of **July 2026**.
 
 ---
 
